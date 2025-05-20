@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>AR Model Animation</title>
+  <title>AR Model Placement</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script type="importmap">
     {
@@ -16,25 +16,9 @@
   </script>
   <style>
     body { margin: 0; overflow: hidden; }
-    #buttons {
-      position: absolute;
-      bottom: 10px;
-      left: 10px;
-      z-index: 10;
-      background: rgba(255, 255, 255, 0.8);
-      padding: 10px;
-      border-radius: 8px;
-    }
-    #buttons button {
-      display: block;
-      margin: 5px 0;
-      padding: 8px 12px;
-      font-size: 14px;
-    }
   </style>
 </head>
 <body>
-<div id="buttons"></div>
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -44,10 +28,8 @@ import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 let camera, scene, renderer;
 let controller, reticle;
 let model = null;
-let gltfAnimations = [];
 let hitTestSource = null;
 let hitTestSourceRequested = false;
-let mixers = [];
 
 init();
 animate();
@@ -56,6 +38,7 @@ function init() {
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
 
+  // Lighting
   scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
   const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
   directionalLight.position.set(0, 5, 2);
@@ -70,6 +53,7 @@ function init() {
     requiredFeatures: ['hit-test']
   }));
 
+  // Reticle setup
   const geometry = new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2);
   const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
   reticle = new THREE.Mesh(geometry, material);
@@ -77,50 +61,44 @@ function init() {
   reticle.visible = false;
   scene.add(reticle);
 
+  // Controller setup
   controller = renderer.xr.getController(0);
   controller.addEventListener('select', () => {
-    if (reticle.visible && model) {
-      const modelClone = clone(model);
-      modelClone.position.setFromMatrixPosition(reticle.matrix);
-      modelClone.scale.set(1, 1, 1);
-      scene.add(modelClone);
+  if (reticle.visible && model) {
+    const modelClone = clone(model);
+    modelClone.position.setFromMatrixPosition(reticle.matrix);
+    modelClone.scale.set(1, 1, 1); // Adjust based on your model
+    scene.add(modelClone);
+    console.log("Model placed at", modelClone.position);
 
-      const mixer = new THREE.AnimationMixer(modelClone);
-      mixers.push(mixer);
+    // Get animation names from the original gltf data
+    const loader = new GLTFLoader();
+    loader.load('tiger.glb', gltf => {
+      const animationNames = gltf.animations.map(anim => anim.name || "(unnamed)");
+      console.log("Animations:\n" + (animationNames.length ? animationNames.join("\n") : "No animations found"));
+    });
+  }
+});
 
-      const buttonsContainer = document.getElementById('buttons');
-      buttonsContainer.innerHTML = ''; // Clear existing
-
-      gltfAnimations.forEach(clip => {
-        const btn = document.createElement('button');
-        btn.textContent = clip.name;
-        btn.onclick = () => {
-          mixer.stopAllAction();
-          const action = mixer.clipAction(clip);
-          action.reset().play();
-        };
-        buttonsContainer.appendChild(btn);
-      });
-    }
-  });
   scene.add(controller);
 
+  // Load GLB model
   const loader = new GLTFLoader();
   loader.load('tiger.glb', gltf => {
     model = gltf.scene;
-    gltfAnimations = gltf.animations;
-
+    model.visible = true;
     model.traverse(child => {
       if (child.isMesh) {
         child.castShadow = true;
         child.receiveShadow = true;
       }
     });
-    console.log("Model & animations loaded");
+    console.log("Model loaded");
   }, undefined, error => {
-    alert('Failed to load model: ' + error.message);
+    alert('Failed to load model:', error);
   });
 
+  // Resize handler
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -129,45 +107,43 @@ function init() {
 }
 
 function animate() {
-  renderer.setAnimationLoop((timestamp, frame) => {
-    if (frame) {
-      const refSpace = renderer.xr.getReferenceSpace();
-      const session = renderer.xr.getSession();
+  renderer.setAnimationLoop(render);
+}
 
-      if (!hitTestSourceRequested) {
-        session.requestReferenceSpace('viewer').then(viewerSpace => {
-          session.requestHitTestSource({ space: viewerSpace }).then(source => {
-            hitTestSource = source;
-          });
+function render(_, frame) {
+  if (frame) {
+    const refSpace = renderer.xr.getReferenceSpace();
+    const session = renderer.xr.getSession();
+
+    if (!hitTestSourceRequested) {
+      session.requestReferenceSpace('viewer').then(viewerSpace => {
+        session.requestHitTestSource({ space: viewerSpace }).then(source => {
+          hitTestSource = source;
         });
+      });
 
-        session.addEventListener('end', () => {
-          hitTestSourceRequested = false;
-          hitTestSource = null;
-        });
+      session.addEventListener('end', () => {
+        hitTestSourceRequested = false;
+        hitTestSource = null;
+      });
 
-        hitTestSourceRequested = true;
-      }
-
-      if (hitTestSource) {
-        const hits = frame.getHitTestResults(hitTestSource);
-        if (hits.length > 0) {
-          const hit = hits[0];
-          const pose = hit.getPose(refSpace);
-          reticle.visible = true;
-          reticle.matrix.fromArray(pose.transform.matrix);
-        } else {
-          reticle.visible = false;
-        }
-      }
+      hitTestSourceRequested = true;
     }
 
-    // Update mixers for animation playback
-    const delta = renderer.xr.isPresenting ? renderer.clock.getDelta() : 0.016;
-    mixers.forEach(mixer => mixer.update(delta));
+    if (hitTestSource) {
+      const hits = frame.getHitTestResults(hitTestSource);
+      if (hits.length > 0) {
+        const hit = hits[0];
+        const pose = hit.getPose(refSpace);
+        reticle.visible = true;
+        reticle.matrix.fromArray(pose.transform.matrix);
+      } else {
+        reticle.visible = false;
+      }
+    }
+  }
 
-    renderer.render(scene, camera);
-  });
+  renderer.render(scene, camera);
 }
 </script>
 </body>
