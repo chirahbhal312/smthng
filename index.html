@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>AR Model Placement</title>
+  <title>AR Single Model Animation</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script type="importmap">
     {
@@ -45,7 +45,8 @@ let camera, scene, renderer;
 let controller, reticle;
 let model = null;
 let animations = [];
-let mixers = [];
+let mixer = null;
+let placedModel = null;
 let hitTestSource = null;
 let hitTestSourceRequested = false;
 
@@ -68,7 +69,6 @@ function init() {
   renderer.xr.enabled = true;
   document.body.appendChild(renderer.domElement);
 
-  // Enable dom-overlay
   document.body.appendChild(ARButton.createButton(renderer, {
     requiredFeatures: ['hit-test', 'dom-overlay'],
     domOverlay: { root: document.body }
@@ -83,17 +83,15 @@ function init() {
 
   controller = renderer.xr.getController(0);
   controller.addEventListener('select', () => {
-    if (reticle.visible && model) {
-      const modelClone = clone(model);
-      modelClone.position.setFromMatrixPosition(reticle.matrix);
-      modelClone.scale.set(1, 1, 1);
-      scene.add(modelClone);
+    if (reticle.visible && model && !placedModel) {
+      placedModel = clone(model);
+      placedModel.position.setFromMatrixPosition(reticle.matrix);
+      placedModel.scale.set(1, 1, 1);
+      scene.add(placedModel);
 
-      const mixer = new THREE.AnimationMixer(modelClone);
-      mixers.push(mixer);
+      mixer = new THREE.AnimationMixer(placedModel);
 
       buttonsContainer.innerHTML = ''; // Clear old buttons
-
       animations.forEach(clip => {
         const btn = document.createElement('button');
         btn.textContent = clip.name;
@@ -166,7 +164,8 @@ function animate() {
     }
 
     const delta = clock.getDelta();
-    mixers.forEach(mixer => mixer.update(delta));
+    if (mixer) mixer.update(delta);
+
     renderer.render(scene, camera);
   });
 }
