@@ -64,14 +64,22 @@ function init() {
   // Controller setup
   controller = renderer.xr.getController(0);
   controller.addEventListener('select', () => {
-    if (reticle.visible && model) {
-      const modelClone = clone(model);
-      modelClone.position.setFromMatrixPosition(reticle.matrix);
-      modelClone.scale.set(1, 1, 1); // Adjust based on your model
-      scene.add(modelClone);
-      console.log("Model placed at", modelClone.position);
-    }
-  });
+  if (reticle.visible && model) {
+    const modelClone = clone(model);
+    modelClone.position.setFromMatrixPosition(reticle.matrix);
+    modelClone.scale.set(1, 1, 1); // Adjust based on your model
+    scene.add(modelClone);
+    console.log("Model placed at", modelClone.position);
+
+    // Get animation names from the original gltf data
+    const loader = new GLTFLoader();
+    loader.load('tiger.glb', gltf => {
+      const animationNames = gltf.animations.map(anim => anim.name || "(unnamed)");
+      alert("Animations:\n" + (animationNames.length ? animationNames.join("\n") : "No animations found"));
+    });
+  }
+});
+
   scene.add(controller);
 
   // Load GLB model
