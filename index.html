@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>AR Model Placement with Parts Display</title>
+  <title>AR Model Placement with Part Detection</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script type="importmap">
     {
@@ -71,6 +71,9 @@ let placedModel = null;
 let hitTestSource = null;
 let hitTestSourceRequested = false;
 
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+
 const buttonsContainer = document.getElementById('buttons');
 const partContainer = document.getElementById('parts');
 
@@ -113,11 +116,10 @@ function init() {
 
       mixer = new THREE.AnimationMixer(placedModel);
 
-      // Show buttons
       buttonsContainer.innerHTML = '';
       buttonsContainer.style.display = 'block';
 
-      // ✅ Add Head button to play first animation
+      // Head button
       const headBtn = document.createElement('button');
       headBtn.textContent = 'Head';
       headBtn.onclick = () => {
@@ -129,7 +131,7 @@ function init() {
       };
       buttonsContainer.appendChild(headBtn);
 
-      // Add animation buttons
+      // Other animation buttons
       animations.forEach(clip => {
         const btn = document.createElement('button');
         btn.textContent = clip.name;
@@ -141,12 +143,8 @@ function init() {
         buttonsContainer.appendChild(btn);
       });
 
-      // Show part names
-      partContainer.innerHTML = '<strong>Model Parts:</strong><br>';
+      partContainer.innerHTML = '<strong>Tap the model to identify parts</strong>';
       partContainer.style.display = 'block';
-      placedModel.traverse(child => {
-        partContainer.innerHTML += `${child.name || '(Unnamed)'} - <i>${child.type}</i><br>`;
-      });
     }
   });
   scene.add(controller);
@@ -168,11 +166,31 @@ function init() {
     alert('Failed to load model: ' + error.message);
   });
 
+  // Touch or click detection for body parts
+  renderer.domElement.addEventListener('touchstart', onTouch, false);
+  renderer.domElement.addEventListener('click', onTouch, false);
+
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
+}
+
+function onTouch(event) {
+  if (!placedModel) return;
+
+  const touch = event.touches ? event.touches[0] : event;
+  pointer.x = (touch.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(pointer, camera);
+
+  const intersects = raycaster.intersectObject(placedModel, true);
+  if (intersects.length > 0) {
+    const part = intersects[0].object;
+    partContainer.innerHTML = `<strong>Part:</strong> ${part.name || '(Unnamed)'}<br><i>Type:</i> ${part.type}`;
+  }
 }
 
 function animate() {
