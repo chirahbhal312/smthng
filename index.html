@@ -67,9 +67,9 @@ function init() {
     if (reticle.visible && model) {
       const modelClone = clone(model);
       modelClone.position.setFromMatrixPosition(reticle.matrix);
-      modelClone.scale.set(5, 5, 5); // Adjust based on your model
+      modelClone.scale.set(1, 1, 1); // Adjust based on your model
       scene.add(modelClone);
-      alert("Model placed at", modelClone.position);
+      console.log("Model placed at", modelClone.position);
     }
   });
   scene.add(controller);
