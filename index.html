@@ -70,7 +70,7 @@ function init() {
   const loader = new GLTFLoader();
   loader.load('tiger.glb', gltf => {
     model = gltf.scene;
-    model.visible = false; // Don't add it until cloned
+    model.visible = true; // Don't add it until cloned
   }, undefined, error => {
     console.error('Failed to load model:', error);
   });
