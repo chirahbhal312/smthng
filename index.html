@@ -16,47 +16,24 @@
   </script>
   <style>
     body { margin: 0; overflow: hidden; }
-    #modelSelector {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 10;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 10px;
-      border-radius: 8px;
+    #modelSelector, #parts, #buttons {
       font-family: sans-serif;
       font-size: 14px;
-    }
-    #parts {
-      position: absolute;
-      top: 70px;
-      left: 10px;
-      z-index: 10;
+      border-radius: 8px;
       background: rgba(255, 255, 255, 0.95);
       padding: 10px;
-      max-height: 250px;
-      overflow-y: auto;
-      border-radius: 8px;
-      font-family: sans-serif;
-      font-size: 14px;
-      line-height: 1.4;
-      display: none;
-    }
-    #buttons {
       position: absolute;
-      bottom: 10px;
       left: 10px;
       z-index: 10;
-      background: rgba(255, 255, 255, 0.8);
-      padding: 10px;
-      border-radius: 8px;
-      display: none;
     }
+    #modelSelector { top: 10px; }
+    #parts { top: 70px; max-height: 250px; overflow-y: auto; display: none; }
+    #buttons { bottom: 10px; display: none; background: rgba(255, 255, 255, 0.8); }
     #buttons button {
-      display: block;
       margin: 5px 0;
       padding: 8px 12px;
       font-size: 14px;
+      display: block;
     }
   </style>
 </head>
@@ -67,6 +44,7 @@
     <option value="tiger.glb">Tiger</option>
     <option value="tiger2.glb">Tiger 2</option>
     <option value="zebramotions.glb">Zebra Motions</option>
+    <option value="zebra.glb">Zebra</option>
   </select>
   <button id="loadModel">Load Model</button>
 </div>
@@ -221,6 +199,13 @@ function onTouch(event) {
   if (intersects.length > 0) {
     const part = intersects[0].object;
     partContainer.innerHTML = `<strong>Part:</strong> ${part.name || '(Unnamed)'}<br><i>Type:</i> ${part.type}`;
+
+    // ✨ Custom behavior: play last animation if part name is "initPoint1"
+    if (part.name === 'initPoint1' && animations.length > 0) {
+      mixer.stopAllAction();
+      const lastClip = animations[animations.length - 1];
+      mixer.clipAction(lastClip).reset().play();
+    }
   }
 }
 
