@@ -16,7 +16,6 @@
   </script>
   <style>
     body { margin: 0; overflow: hidden; }
-
     #modelSelector {
       position: absolute;
       top: 10px;
@@ -28,7 +27,6 @@
       font-family: sans-serif;
       font-size: 14px;
     }
-
     #parts {
       position: absolute;
       top: 70px;
@@ -44,7 +42,6 @@
       line-height: 1.4;
       display: none;
     }
-
     #buttons {
       position: absolute;
       bottom: 10px;
@@ -55,7 +52,6 @@
       border-radius: 8px;
       display: none;
     }
-
     #buttons button {
       display: block;
       margin: 5px 0;
@@ -68,10 +64,10 @@
 <div id="modelSelector">
   <label for="models">Choose a model:</label>
   <select id="models">
-  <option value="tiger.glb">Tiger</option>
-  <option value="tiger2.glb">Tiger 2</option>
-  <option value="zebramotions.glb">Zebra Motions</option>
-</select>
+    <option value="tiger.glb">Tiger</option>
+    <option value="tiger2.glb">Tiger 2</option>
+    <option value="zebramotions.glb">Zebra Motions</option>
+  </select>
   <button id="loadModel">Load Model</button>
 </div>
 <div id="parts"></div>
@@ -94,14 +90,13 @@ let hitTestSourceRequested = false;
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
+let initialPinchDistance = null;
+let initialScale = 1;
 
 const modelSelector = document.getElementById('models');
 const loadModelButton = document.getElementById('loadModel');
 const buttonsContainer = document.getElementById('buttons');
 const partContainer = document.getElementById('parts');
-let initialPinchDistance = null;
-let initialScale = 1;
-
 
 init();
 animate();
@@ -109,11 +104,10 @@ animate();
 function init() {
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
-
   scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-  directionalLight.position.set(0, 5, 2);
-  scene.add(directionalLight);
+  const light = new THREE.DirectionalLight(0xffffff, 1);
+  light.position.set(0, 5, 2);
+  scene.add(light);
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -145,13 +139,18 @@ function init() {
       buttonsContainer.innerHTML = '';
       buttonsContainer.style.display = 'block';
 
+      // Auto-play idle animation
+      const idleClip = animations.find(a => a.name.toLowerCase().startsWith('idle'));
+      if (idleClip) {
+        mixer.clipAction(idleClip).play();
+      }
+
       const headBtn = document.createElement('button');
       headBtn.textContent = 'Head';
       headBtn.onclick = () => {
         if (animations.length > 0) {
           mixer.stopAllAction();
-          const action = mixer.clipAction(animations[0]);
-          action.reset().play();
+          mixer.clipAction(animations[0]).reset().play();
         }
       };
       buttonsContainer.appendChild(headBtn);
@@ -161,8 +160,7 @@ function init() {
         btn.textContent = clip.name;
         btn.onclick = () => {
           mixer.stopAllAction();
-          const action = mixer.clipAction(clip);
-          action.reset().play();
+          mixer.clipAction(clip).reset().play();
         };
         buttonsContainer.appendChild(btn);
       });
@@ -180,6 +178,8 @@ function init() {
 
   renderer.domElement.addEventListener('touchstart', onTouch, false);
   renderer.domElement.addEventListener('click', onTouch, false);
+  renderer.domElement.addEventListener('touchmove', onTouchMove, false);
+  renderer.domElement.addEventListener('touchend', onTouchEnd, false);
 
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -212,21 +212,17 @@ function loadModel(file) {
 
 function onTouch(event) {
   if (!placedModel) return;
-
   const touch = event.touches ? event.touches[0] : event;
   pointer.x = (touch.clientX / window.innerWidth) * 2 - 1;
   pointer.y = -(touch.clientY / window.innerHeight) * 2 + 1;
 
   raycaster.setFromCamera(pointer, camera);
   const intersects = raycaster.intersectObject(placedModel, true);
-
   if (intersects.length > 0) {
     const part = intersects[0].object;
     partContainer.innerHTML = `<strong>Part:</strong> ${part.name || '(Unnamed)'}<br><i>Type:</i> ${part.type}`;
   }
-
-  renderer.domElement.addEventListener('touchmove', onTouchMove, false);
-renderer.domElement.addEventListener('touchend', onTouchEnd, false);
+}
 
 function getTouchDistance(touches) {
   const dx = touches[0].clientX - touches[1].clientX;
@@ -238,7 +234,6 @@ function onTouchMove(event) {
   if (!placedModel || event.touches.length !== 2) return;
 
   const newDistance = getTouchDistance(event.touches);
-
   if (initialPinchDistance === null) {
     initialPinchDistance = newDistance;
     initialScale = placedModel.scale.x;
@@ -255,8 +250,6 @@ function onTouchEnd(event) {
   }
 }
 
-}
-
 function animate() {
   const clock = new THREE.Clock();
   renderer.setAnimationLoop((_, frame) => {
@@ -270,12 +263,10 @@ function animate() {
             hitTestSource = source;
           });
         });
-
         session.addEventListener('end', () => {
           hitTestSourceRequested = false;
           hitTestSource = null;
         });
-
         hitTestSourceRequested = true;
       }
 
@@ -294,7 +285,6 @@ function animate() {
 
     const delta = clock.getDelta();
     if (mixer) mixer.update(delta);
-
     renderer.render(scene, camera);
   });
 }
