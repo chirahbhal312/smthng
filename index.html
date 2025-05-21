@@ -201,7 +201,7 @@ function onTouch(event) {
     partContainer.innerHTML = `<strong>Part:</strong> ${part.name || '(Unnamed)'}<br><i>Type:</i> ${part.type}`;
 
     // ✨ Custom behavior: play last animation if part name is "initPoint1"
-    if (part.name === 'initPoint1' && animations.length > 0) {
+    if (part.name === 'Sphere' && animations.length > 0) {
       mixer.stopAllAction();
       const lastClip = animations[animations.length - 1];
       mixer.clipAction(lastClip).reset().play();
