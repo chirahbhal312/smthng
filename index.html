@@ -17,9 +17,21 @@
   <style>
     body { margin: 0; overflow: hidden; }
 
-    #parts {
+    #modelSelector {
       position: absolute;
       top: 10px;
+      left: 10px;
+      z-index: 10;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 10px;
+      border-radius: 8px;
+      font-family: sans-serif;
+      font-size: 14px;
+    }
+
+    #parts {
+      position: absolute;
+      top: 70px;
       left: 10px;
       z-index: 10;
       background: rgba(255, 255, 255, 0.95);
@@ -53,6 +65,15 @@
   </style>
 </head>
 <body>
+<div id="modelSelector">
+  <label for="models">Choose a model:</label>
+  <select id="models">
+    <option value="tiger2.glb">Tiger</option>
+    <option value="lion.glb">Lion</option>
+    <option value="cheetah.glb">Cheetah</option>
+  </select>
+  <button id="loadModel">Load Model</button>
+</div>
 <div id="parts"></div>
 <div id="buttons"></div>
 
@@ -74,6 +95,8 @@ let hitTestSourceRequested = false;
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 
+const modelSelector = document.getElementById('models');
+const loadModelButton = document.getElementById('loadModel');
 const buttonsContainer = document.getElementById('buttons');
 const partContainer = document.getElementById('parts');
 
@@ -119,7 +142,6 @@ function init() {
       buttonsContainer.innerHTML = '';
       buttonsContainer.style.display = 'block';
 
-      // Head button
       const headBtn = document.createElement('button');
       headBtn.textContent = 'Head';
       headBtn.onclick = () => {
@@ -131,7 +153,6 @@ function init() {
       };
       buttonsContainer.appendChild(headBtn);
 
-      // Other animation buttons
       animations.forEach(clip => {
         const btn = document.createElement('button');
         btn.textContent = clip.name;
@@ -149,8 +170,24 @@ function init() {
   });
   scene.add(controller);
 
+  loadModelButton.addEventListener('click', () => {
+    const selectedModel = modelSelector.value;
+    loadModel(selectedModel);
+  });
+
+  renderer.domElement.addEventListener('touchstart', onTouch, false);
+  renderer.domElement.addEventListener('click', onTouch, false);
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+}
+
+function loadModel(file) {
   const loader = new GLTFLoader();
-  loader.load('tiger2.glb', gltf => {
+  loader.load(`../${file}`, gltf => {
     model = gltf.scene;
     animations = gltf.animations;
 
@@ -161,19 +198,12 @@ function init() {
       }
     });
 
-    console.log("Model and animations loaded");
+    placedModel = null;
+    partContainer.style.display = 'none';
+    buttonsContainer.style.display = 'none';
+    console.log(`${file} loaded with ${animations.length} animation(s)`);
   }, undefined, error => {
     alert('Failed to load model: ' + error.message);
-  });
-
-  // Touch or click detection for body parts
-  renderer.domElement.addEventListener('touchstart', onTouch, false);
-  renderer.domElement.addEventListener('click', onTouch, false);
-
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
   });
 }
 
@@ -185,8 +215,8 @@ function onTouch(event) {
   pointer.y = -(touch.clientY / window.innerHeight) * 2 + 1;
 
   raycaster.setFromCamera(pointer, camera);
-
   const intersects = raycaster.intersectObject(placedModel, true);
+
   if (intersects.length > 0) {
     const part = intersects[0].object;
     partContainer.innerHTML = `<strong>Part:</strong> ${part.name || '(Unnamed)'}<br><i>Type:</i> ${part.type}`;
