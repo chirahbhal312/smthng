@@ -99,6 +99,9 @@ const modelSelector = document.getElementById('models');
 const loadModelButton = document.getElementById('loadModel');
 const buttonsContainer = document.getElementById('buttons');
 const partContainer = document.getElementById('parts');
+let initialPinchDistance = null;
+let initialScale = 1;
+
 
 init();
 animate();
@@ -221,6 +224,37 @@ function onTouch(event) {
     const part = intersects[0].object;
     partContainer.innerHTML = `<strong>Part:</strong> ${part.name || '(Unnamed)'}<br><i>Type:</i> ${part.type}`;
   }
+
+  renderer.domElement.addEventListener('touchmove', onTouchMove, false);
+renderer.domElement.addEventListener('touchend', onTouchEnd, false);
+
+function getTouchDistance(touches) {
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function onTouchMove(event) {
+  if (!placedModel || event.touches.length !== 2) return;
+
+  const newDistance = getTouchDistance(event.touches);
+
+  if (initialPinchDistance === null) {
+    initialPinchDistance = newDistance;
+    initialScale = placedModel.scale.x;
+  } else {
+    const scaleFactor = newDistance / initialPinchDistance;
+    const newScale = initialScale * scaleFactor;
+    placedModel.scale.set(newScale, newScale, newScale);
+  }
+}
+
+function onTouchEnd(event) {
+  if (event.touches.length < 2) {
+    initialPinchDistance = null;
+  }
+}
+
 }
 
 function animate() {
